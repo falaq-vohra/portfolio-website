@@ -175,6 +175,7 @@ body {
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 1rem;
+  pointer-events: auto;
 }
 
 .process-avatar__image {
@@ -187,6 +188,7 @@ body {
   filter: grayscale(1);
   transition: filter 0.3s ease;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(201, 168, 118, 0.3);
+  pointer-events: none;
 }
 
 @media (hover: hover) and (pointer: fine) {

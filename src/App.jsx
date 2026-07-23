@@ -1,10 +1,21 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { motion, AnimatePresence, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+import {
+  AnimatePresence,
+  cubicBezier,
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from 'framer-motion';
 import GenerativeMountainScene from './components/GenerativeMountainScene';
 import LoadingScreen from './components/LoadingScreen';
 import ProcessStorySection from './components/ProcessStorySection';
 import AvatarImage from './assets/Avatar.webp';
 import heroBgUrl from './assets/hero_bg.jpg';
+
+const linearEasing = (progress) => progress;
+const dropEasing = cubicBezier(0.45, 0.05, 0.22, 1);
+const softLandingEasing = cubicBezier(0.16, 1, 0.3, 1);
 
 function HeroAvatarHandoff({ children, shouldReduceMotion, travel }) {
   const { scrollY } = useScroll();
@@ -17,17 +28,37 @@ function HeroAvatarHandoff({ children, shouldReduceMotion, travel }) {
   const y = useTransform(
     scrollProgress,
     [0, 0.18, 0.92, 0.96, 1],
-    [0, 0, travel.atStart, travel.atEnd, travel.atEnd]
+    [0, 0, travel.atStart, travel.atEnd, travel.atEnd],
+    {
+      ease: [
+        linearEasing,
+        dropEasing,
+        linearEasing,
+        softLandingEasing,
+      ],
+    }
   );
   const opacity = useTransform(
     scrollProgress,
     [0, 0.92, 0.96, 1],
     [1, 1, 0, 0]
   );
+  const pointerEvents = useTransform(
+    scrollProgress,
+    (progress) => (progress < 0.92 ? 'auto' : 'none')
+  );
   const scale = useTransform(
     scrollProgress,
-    [0, 0.92, 0.96, 1],
-    [1, 1, travel.scale, travel.scale]
+    [0, 0.18, 0.92, 0.96, 1],
+    [1, 1, 1 + (travel.scale - 1) * 0.98, travel.scale, travel.scale],
+    {
+      ease: [
+        linearEasing,
+        dropEasing,
+        softLandingEasing,
+        linearEasing,
+      ],
+    }
   );
 
   return (
@@ -37,6 +68,7 @@ function HeroAvatarHandoff({ children, shouldReduceMotion, travel }) {
         y: shouldReduceMotion ? 0 : y,
         scale: shouldReduceMotion ? 1 : scale,
         opacity: shouldReduceMotion ? 1 : opacity,
+        pointerEvents,
       }}
     >
       {children}
