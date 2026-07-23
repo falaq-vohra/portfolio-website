@@ -137,7 +137,11 @@ export default function ProcessStorySection() {
               >
                 <span className="process-story__number">{stage.number}</span>
                 <h3>{stage.title}</h3>
-                <p>{stage.description}</p>
+                <div className="process-story__copy">
+                  {stage.paragraphs.map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                </div>
               </li>
             );
           })}

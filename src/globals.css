@@ -254,12 +254,18 @@ body {
   line-height: 0.95;
 }
 
-.process-story__stage p {
+.process-story__copy {
+  display: grid;
+  gap: 0.65rem;
   max-width: 22rem;
   margin-top: 1rem;
+}
+
+.process-story__stage p {
+  max-width: 22rem;
   color: rgba(228, 222, 215, 0.68);
   font-size: clamp(0.9rem, 1.25vw, 1.1rem);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .process-story__progress {
@@ -354,7 +360,8 @@ body {
   }
 
   .process-story__stage p {
-    font-size: 0.78rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
   }
 }
 
