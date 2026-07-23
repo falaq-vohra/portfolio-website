@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 import heroBgUrl from "../assets/hero_bg.jpg";
 
-export function GenerativeMountainScene() {
+export function GenerativeMountainScene({ pointerRef }) {
   const mountRef = useRef(null);
   const lightRef = useRef(null);
 
@@ -33,16 +33,25 @@ export function GenerativeMountainScene() {
 
     // BACKGROUND IMAGE — loaded behind the 3D mountains
     const textureLoader = new THREE.TextureLoader();
+    let backgroundTexture;
+    let isDisposed = false;
     textureLoader.load(
       heroBgUrl,
       (texture) => {
+        if (isDisposed) {
+          texture.dispose();
+          return;
+        }
         texture.colorSpace = THREE.SRGBColorSpace;
+        backgroundTexture = texture;
         scene.background = texture;
       },
       undefined,
       () => {
         // Fallback if the image fails to load
-        scene.background = new THREE.Color(0x0a0a0a);
+        if (!isDisposed) {
+          scene.background = new THREE.Color(0x0a0a0a);
+        }
       }
     );
 
@@ -161,13 +170,74 @@ export function GenerativeMountainScene() {
     lightRef.current = pointLight;
     scene.add(pointLight);
 
+    const pointerLightPosition = new THREE.Vector3();
     let frameId;
+    let hiddenAt = document.hidden ? performance.now() : null;
+    let pausedDuration = 0;
+    let isHeroVisible = true;
+
+    const updatePointerLight = () => {
+      const pointer = pointerRef.current;
+      if (!pointer.hasMoved) return;
+
+      const x = (pointer.x / window.innerWidth) * 2 - 1;
+      const y = -(pointer.y / window.innerHeight) * 2 + 1;
+      pointerLightPosition.set(x * 5, 2, 2 - y * 2);
+
+      if (lightRef.current) {
+        lightRef.current.position.copy(pointerLightPosition);
+      }
+      material.uniforms.pointLightPosition.value.copy(pointerLightPosition);
+    };
+
     const animate = (t) => {
-      material.uniforms.time.value = t * 0.0003;
+      updatePointerLight();
+      material.uniforms.time.value = (t - pausedDuration) * 0.0003;
       renderer.render(scene, camera);
       frameId = requestAnimationFrame(animate);
     };
-    animate(0);
+
+    const startAnimation = () => {
+      if (frameId === undefined && !document.hidden && isHeroVisible) {
+        if (hiddenAt !== null) {
+          pausedDuration += performance.now() - hiddenAt;
+          hiddenAt = null;
+        }
+        frameId = requestAnimationFrame(animate);
+      }
+    };
+    const stopAnimation = () => {
+      if (frameId !== undefined) {
+        cancelAnimationFrame(frameId);
+        frameId = undefined;
+      }
+      if (hiddenAt === null) {
+        hiddenAt = performance.now();
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopAnimation();
+      } else {
+        startAnimation();
+      }
+    };
+
+    const visibilityObserver = new IntersectionObserver(
+      ([entry]) => {
+        isHeroVisible = entry.isIntersecting;
+        if (isHeroVisible) {
+          startAnimation();
+        } else {
+          stopAnimation();
+        }
+      },
+      { rootMargin: "100px 0px" }
+    );
+    visibilityObserver.observe(currentMount);
+
+    renderer.render(scene, camera);
+    startAnimation();
 
     const handleResize = () => {
       if (!currentMount) return;
@@ -176,33 +246,21 @@ export function GenerativeMountainScene() {
       renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
     };
 
-    const handleMouseMove = (e) => {
-        const x = (e.clientX / window.innerWidth) * 2 - 1;
-        const y = -(e.clientY / window.innerHeight) * 2 + 1;
-        const lightX = x * 5;
-        const lightY = y * 5;
-        const pos = new THREE.Vector3(lightX, 2, 2 - y * 2);
-
-        if (lightRef.current) {
-          lightRef.current.position.copy(pos);
-        }
-        if (material.uniforms.pointLightPosition) {
-             material.uniforms.pointLightPosition.value = pos;
-        }
-    };
-
     window.addEventListener("resize", handleResize);
-    window.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      cancelAnimationFrame(frameId);
+      stopAnimation();
+      isDisposed = true;
+      visibilityObserver.disconnect();
       window.removeEventListener("resize", handleResize);
-      window.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (currentMount && renderer.domElement.parentNode === currentMount) {
         currentMount.removeChild(renderer.domElement);
       }
       geometry.dispose();
       material.dispose();
+      backgroundTexture?.dispose();
       renderer.dispose();
     };
   }, []);
